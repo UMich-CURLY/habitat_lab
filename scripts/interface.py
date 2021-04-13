@@ -26,6 +26,16 @@ import cv2
 lock = threading.Lock()
 rospy.init_node("habitat", anonymous=False)
 
+def convert_points_to_topdown(pathfinder, points, meters_per_pixel = 0.025):
+    points_topdown = []
+    bounds = pathfinder.get_bounds()
+    for point in points:
+        # convert 3D x,z to topdown x,y
+        px = (point[0] - bounds[0][0]) / meters_per_pixel
+        py = (point[2] - bounds[0][2]) / meters_per_pixel
+        points_topdown.append(np.array([px, py]))
+    return points_topdown
+
 
 class sim_env(threading.Thread):
 
@@ -74,6 +84,7 @@ class sim_env(threading.Thread):
 
     def _update_position(self):
         state = self.env.sim.get_agent_state(0)
+        # print (state)
         vz = -state.velocity[0]
         vx = state.velocity[1]
         dt = self._dt
@@ -126,7 +137,6 @@ class sim_env(threading.Thread):
         """
         while not rospy.is_shutdown():
             lock.acquire()
-            print (self.observations["rgb"].ravel())
             rgb_with_res = np.concatenate(
                 (
                     np.float32(self.observations["rgb"].ravel()),
@@ -183,7 +193,7 @@ def callback(vel, my_env):
 
 def main():
 
-    my_env = sim_env(env_config_file="configs/tasks/pointnav_rgbd.yaml")
+    my_env = sim_env(env_config_file="configs/tasks/objectnav_mp3d.yaml")
     # start the thread that publishes sensor readings
     my_env.start()
 
