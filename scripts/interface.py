@@ -9,8 +9,10 @@ import rospy
 from rospy.numpy_msg import numpy_msg
 from rospy_tutorials.msg import Floats
 from geometry_msgs.msg import Twist
+from geometry_msgs.msg import PoseStamped
 import threading
 import sys
+import tf
 
 sys.path = [
     b for b in sys.path if "2.7" not in b
@@ -26,7 +28,7 @@ import cv2
 lock = threading.Lock()
 rospy.init_node("habitat", anonymous=False)
 
-def convert_points_to_topdown(pathfinder, points, meters_per_pixel = 0.025):
+def convert_points_to_topdown(pathfinder, points, meters_per_pixel = 1):
     points_topdown = []
     bounds = pathfinder.get_bounds()
     for point in points:
@@ -36,6 +38,9 @@ def convert_points_to_topdown(pathfinder, points, meters_per_pixel = 0.025):
         points_topdown.append(np.array([px, py]))
     return points_topdown
 
+def quat_to_coeff(quat):
+        quaternion = [quat.x, quat.y, quat.z, quat.w]
+        return quaternion
 
 class sim_env(threading.Thread):
 
@@ -61,12 +66,15 @@ class sim_env(threading.Thread):
         #     "DEPTH": self.env._sim.config["DEPTH_SENSOR"]["HEIGHT"],
         #     "BC_SENSOR": self.env._sim.config["BC_SENSOR"]["HEIGHT"],
         # }
+        config = self.env._sim.config
+        print(self.env._sim.active_dataset)
         self._sensor_resolution = {
             "RGB": 256,
             "DEPTH": 256,
         }
         self._pub_rgb = rospy.Publisher("~rgb", numpy_msg(Floats), queue_size=1)
         self._pub_depth = rospy.Publisher("~depth", numpy_msg(Floats), queue_size=1)
+        self._pub_pose = rospy.Publisher("~pose", PoseStamped, queue_size=1)
 
         # additional RGB sensor I configured
 
@@ -81,10 +89,26 @@ class sim_env(threading.Thread):
                 observations=self.observations, episode=self.env.current_episode
             )
         )
+    
 
     def _update_position(self):
         state = self.env.sim.get_agent_state(0)
-        # print (state)
+        agent_pos = state.position
+        agent_quat = quat_to_coeff(state.rotation)
+        euler = list(tf.transformations.euler_from_quaternion(agent_quat))
+        proj_quat = tf.transformations.quaternion_from_euler(euler[0],euler[2],euler[1]+3.14/2)
+        agent_pos_in_map_frame = convert_points_to_topdown(self.env.sim.pathfinder, [agent_pos])
+        self.poseMsg = PoseStamped()
+        self.poseMsg.header.frame_id = "map"
+        self.poseMsg.pose.orientation.x = proj_quat[0]
+        self.poseMsg.pose.orientation.y = proj_quat[1]
+        self.poseMsg.pose.orientation.z = proj_quat[2]
+        self.poseMsg.pose.orientation.w = proj_quat[3]
+        self.poseMsg.header.stamp = rospy.Time.now()
+        self.poseMsg.pose.position.x = agent_pos_in_map_frame[0][0]
+        self.poseMsg.pose.position.y = agent_pos_in_map_frame[0][1]
+        self.poseMsg.pose.position.z = 0.0
+        self._pub_pose.publish(self.poseMsg)
         vz = -state.velocity[0]
         vx = state.velocity[1]
         dt = self._dt
@@ -184,6 +208,7 @@ class sim_env(threading.Thread):
         self._dt = dt
 
 
+
 def callback(vel, my_env):
     lock.acquire()
     my_env.set_linear_velocity(vel.linear.x, vel.linear.y)
@@ -193,7 +218,7 @@ def callback(vel, my_env):
 
 def main():
 
-    my_env = sim_env(env_config_file="configs/tasks/objectnav_mp3d.yaml")
+    my_env = sim_env(env_config_file="configs/tasks/pointnav_rgbd.yaml")
     # start the thread that publishes sensor readings
     my_env.start()
 

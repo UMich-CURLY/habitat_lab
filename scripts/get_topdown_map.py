@@ -12,11 +12,11 @@ import imageio
 import numpy as np
 
 import habitat
-from habitat.tasks.nav.nav_task import NavigationEpisode, NavigationGoal
+from habitat.tasks.nav.nav import NavigationEpisode, NavigationGoal
 from habitat.utils.visualizations import maps
-from habitat.utils.visualizations.maps import COORDINATE_MIN, COORDINATE_MAX
+# from habitat.utils.visualizations.maps import COORDINATE_MIN, COORDINATE_MAX
 
-MAP_DIR = os.path.join("habitat_ros", "maps")
+MAP_DIR = os.path.join("habitat_interface", "maps")
 if not os.path.exists(MAP_DIR):
     os.makedirs(MAP_DIR)
 
@@ -29,22 +29,30 @@ def get_topdown_map(config_paths, map_name):
     env = habitat.Env(config=config, dataset=dataset)
     env.reset()
 
-    square_map_resolution = 5000
-    top_down_map = maps.get_topdown_map(env.sim, map_resolution=(square_map_resolution,square_map_resolution))
+    meters_per_pixel =0.025
+    hablab_topdown_map = maps.get_topdown_map(
+            env._sim.pathfinder, 0.0, meters_per_pixel=meters_per_pixel
+        )
+    recolor_map = np.array(
+        [[255, 255, 255], [128, 128, 128], [0, 0, 0]], dtype=np.uint8
+    )
+    hablab_topdown_map = recolor_map[hablab_topdown_map]
+    # square_map_resolution = 5000
+    # top_down_map = maps.get_topdown_map(env.sim, map_resolution=(square_map_resolution,square_map_resolution))
 
-    # Image containing 0 if occupied, 1 if unoccupied, and 2 if border (if
-    # the flag is set)
-    top_down_map[np.where(top_down_map == 0)] = 125
-    top_down_map[np.where(top_down_map == 1)] = 255
-    top_down_map[np.where(top_down_map == 2)] = 0
+    # # Image containing 0 if occupied, 1 if unoccupied, and 2 if border (if
+    # # the flag is set)
+    # top_down_map[np.where(top_down_map == 0)] = 125
+    # top_down_map[np.where(top_down_map == 1)] = 255
+    # top_down_map[np.where(top_down_map == 2)] = 0
 
-    imageio.imsave(os.path.join(MAP_DIR, map_name + ".pgm"), top_down_map)
+    imageio.imsave(os.path.join(MAP_DIR, map_name + ".pgm"), hablab_topdown_map)
 
     complete_name = os.path.join(MAP_DIR, map_name + ".yaml")
     f = open(complete_name, "w+")
 
     f.write("image: " + map_name + ".pgm\n")
-    f.write("resolution: " + str((COORDINATE_MAX - COORDINATE_MIN) / square_map_resolution) + "\n")
+    f.write("resolution: " + str(meters_per_pixel) + "\n")
     f.write("origin: [" + str(-1) + "," + str(-1) + ", 0.000000]\n")
     f.write("negate: 0\noccupied_thresh: 0.65\nfree_thresh: 0.196")
     f.close()
@@ -52,7 +60,7 @@ def get_topdown_map(config_paths, map_name):
 
 def main():
     #first parameter is config path, second parameter is map name
-    get_topdown_map("configs/tasks/pointnav_rgbd_gibson.yaml", "default")
+    get_topdown_map("configs/tasks/objectnav_mp3d.yaml", "default")
 
 
 if __name__ == "__main__":
