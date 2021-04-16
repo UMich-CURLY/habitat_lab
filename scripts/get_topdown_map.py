@@ -16,8 +16,9 @@ from habitat.tasks.nav.nav import NavigationEpisode, NavigationGoal
 from habitat.utils.visualizations import maps
 # from habitat.utils.visualizations.maps import COORDINATE_MIN, COORDINATE_MAX
 
-MAP_DIR = os.path.join("habitat_interface", "maps")
+MAP_DIR = "~/catkin_ws/src/habitat_interface/maps/"
 if not os.path.exists(MAP_DIR):
+    print("Didi not find maps directory")
     os.makedirs(MAP_DIR)
 
 def get_topdown_map(config_paths, map_name):
@@ -37,17 +38,17 @@ def get_topdown_map(config_paths, map_name):
         [[255, 255, 255], [128, 128, 128], [0, 0, 0]], dtype=np.uint8
     )
     hablab_topdown_map = recolor_map[hablab_topdown_map]
-    # square_map_resolution = 5000
-    # top_down_map = maps.get_topdown_map(env.sim, map_resolution=(square_map_resolution,square_map_resolution))
+    square_map_resolution = 5000
+    map_resolution = [5000,5000]
+    top_down_map = maps.get_topdown_map(pathfinder = env._sim.pathfinder, map_resolution=(square_map_resolution,square_map_resolution), height = 0.0)
 
-    # # Image containing 0 if occupied, 1 if unoccupied, and 2 if border (if
-    # # the flag is set)
-    # top_down_map[np.where(top_down_map == 0)] = 125
-    # top_down_map[np.where(top_down_map == 1)] = 255
-    # top_down_map[np.where(top_down_map == 2)] = 0
-
+    # Image containing 0 if occupied, 1 if unoccupied, and 2 if border (if
+    # the flag is set)
+    top_down_map[np.where(top_down_map == 0)] = 125
+    top_down_map[np.where(top_down_map == 1)] = 255
+    top_down_map[np.where(top_down_map == 2)] = 0
     imageio.imsave(os.path.join(MAP_DIR, map_name + ".pgm"), hablab_topdown_map)
-
+    print("writing Yaml file! ")
     complete_name = os.path.join(MAP_DIR, map_name + ".yaml")
     f = open(complete_name, "w+")
 
@@ -60,7 +61,7 @@ def get_topdown_map(config_paths, map_name):
 
 def main():
     #first parameter is config path, second parameter is map name
-    get_topdown_map("configs/tasks/objectnav_mp3d.yaml", "default")
+    get_topdown_map("configs/tasks/pointnav_rgbd.yaml", "default")
 
 
 if __name__ == "__main__":

@@ -28,7 +28,7 @@ import cv2
 lock = threading.Lock()
 rospy.init_node("habitat", anonymous=False)
 
-def convert_points_to_topdown(pathfinder, points, meters_per_pixel = 1):
+def convert_points_to_topdown(pathfinder, points, meters_per_pixel = 0.5):
     points_topdown = []
     bounds = pathfinder.get_bounds()
     for point in points:
@@ -72,6 +72,7 @@ class sim_env(threading.Thread):
             "RGB": 256,
             "DEPTH": 256,
         }
+        print(self.env._sim.pathfinder.get_bounds())
         self._pub_rgb = rospy.Publisher("~rgb", numpy_msg(Floats), queue_size=1)
         self._pub_depth = rospy.Publisher("~depth", numpy_msg(Floats), queue_size=1)
         self._pub_pose = rospy.Publisher("~pose", PoseStamped, queue_size=1)
@@ -99,7 +100,7 @@ class sim_env(threading.Thread):
         proj_quat = tf.transformations.quaternion_from_euler(euler[0],euler[2],euler[1]+3.14/2)
         agent_pos_in_map_frame = convert_points_to_topdown(self.env.sim.pathfinder, [agent_pos])
         self.poseMsg = PoseStamped()
-        self.poseMsg.header.frame_id = "map"
+        self.poseMsg.header.frame_id = "world"
         self.poseMsg.pose.orientation.x = proj_quat[0]
         self.poseMsg.pose.orientation.y = proj_quat[1]
         self.poseMsg.pose.orientation.z = proj_quat[2]
