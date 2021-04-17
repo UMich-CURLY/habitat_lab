@@ -13,7 +13,8 @@ from geometry_msgs.msg import PoseStamped
 import threading
 import sys
 import tf
-
+from habitat.utils.geometry_utils import quaternion_rotate_vector
+from habitat.tasks.utils import cartesian_to_polar
 sys.path = [
     b for b in sys.path if "2.7" not in b
 ]  # remove path's related to ROS from environment or else certain packages like cv2 can't be imported
@@ -94,16 +95,22 @@ class sim_env(threading.Thread):
 
     def _update_position(self):
         state = self.env.sim.get_agent_state(0)
+        heading_vector = quaternion_rotate_vector(
+            state.rotation.inverse(), np.array([0, 0, -1])
+        )
+        phi = cartesian_to_polar(-heading_vector[2], heading_vector[0])[1]
+        top_down_map_angle = phi - np.pi / 2 
         agent_pos = state.position
         agent_quat = quat_to_coeff(state.rotation)
         euler = list(tf.transformations.euler_from_quaternion(agent_quat))
-        proj_quat = tf.transformations.quaternion_from_euler(euler[0],euler[2],euler[1]+3.14/2)
+        proj_quat = tf.transformations.quaternion_from_euler(0.0,0.0,top_down_map_angle-np.pi)
+        # proj_quat = tf.transformations.quaternion_from_euler(euler[0]+np.pi,euler[2],euler[1])
         agent_pos_in_map_frame = convert_points_to_topdown(self.env.sim.pathfinder, [agent_pos])
         self.poseMsg = PoseStamped()
         self.poseMsg.header.frame_id = "world"
         self.poseMsg.pose.orientation.x = proj_quat[0]
-        self.poseMsg.pose.orientation.y = proj_quat[1]
-        self.poseMsg.pose.orientation.z = proj_quat[2]
+        self.poseMsg.pose.orientation.y = proj_quat[2]
+        self.poseMsg.pose.orientation.z = proj_quat[1]
         self.poseMsg.pose.orientation.w = proj_quat[3]
         self.poseMsg.header.stamp = rospy.Time.now()
         self.poseMsg.pose.position.x = agent_pos_in_map_frame[0][0]
