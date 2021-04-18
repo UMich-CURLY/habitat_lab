@@ -26,7 +26,7 @@ from habitat_baselines.utils.common import batch_obs
 def get_default_config() -> Config:
     c = Config()
     c.INPUT_TYPE = "rgb"
-    c.MODEL_PATH = "data/checkpoints/gibson-rgb-best.pth"
+    c.MODEL_PATH = "data/checkpoints/rgbd.pth"
     c.RESOLUTION = 256
     c.HIDDEN_SIZE = 512
     c.RANDOM_SEED = 7

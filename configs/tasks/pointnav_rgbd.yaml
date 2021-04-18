@@ -27,7 +27,7 @@ TASK:
   SUCCESS:
     SUCCESS_DISTANCE: 0.2
 DATASET:
-  TYPE: ObjectNav-v1
+  TYPE: PointNav-v1
   SPLIT: train
-  DATA_PATH: "data/datasets/objectnav/mp3d/v1/{split}/content/17DRP5sb8fy.json.gz"
+  DATA_PATH: "data/datasets/pointnav/mp3d/v1/{split}/content/17DRP5sb8fy.json.gz"
   SCENES_DIR: "data/scene_datasets/"

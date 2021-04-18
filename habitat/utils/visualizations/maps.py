@@ -13,11 +13,11 @@ import scipy.ndimage
 
 from habitat.core.utils import try_cv2_import
 from habitat.utils.visualizations import utils
+import habitat_sim.bindings as hsim
 
 try:
     from habitat.sims.habitat_simulator.habitat_simulator import HabitatSim
 except ImportError:
-    print("hsim Import")
     pass
 
 cv2 = try_cv2_import()

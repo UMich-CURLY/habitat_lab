@@ -1,10 +1,13 @@
 # Hyperparameters and ResNet18 from on https://arxiv.org/abs/2012.0611
 
-VERBOSE: False
+VERBOSE: True
 
-BASE_TASK_CONFIG_PATH: "configs/tasks/pointnav_gibson.yaml"
+BASE_TASK_CONFIG_PATH: "configs/tasks/pointnav_rgbd.yaml"
 TRAINER_NAME: "ppo"
 ENV_NAME: "NavRLEnv"
+EVAL:
+    SPLIT: val
+    USE_CKPT_CONFIG: False
 SIMULATOR_GPU_ID: 0
 TORCH_GPU_ID: 0
 VIDEO_OPTION: []
@@ -14,20 +17,22 @@ TENSORBOARD_DIR: "tb"
 VIDEO_DIR: "video_dir"
 # Evaluate on all episodes
 TEST_EPISODE_COUNT: -1
-EVAL_CKPT_PATH_DIR: "data/new_checkpoints"
-NUM_ENVIRONMENTS: 6
-SENSORS: ["DEPTH_SENSOR"]
-CHECKPOINT_FOLDER: "data/new_checkpoints"
-TOTAL_NUM_STEPS: 75e6
+EVAL_CKPT_PATH_DIR: "data/checkpoints"
+NUM_ENVIRONMENTS: 1  #6
+SENSORS: ["RGB_SENSOR", "DEPTH_SENSOR"]
+
+CHECKPOINT_FOLDER: "data/checkpoints"
+# TOTAL_NUM_STEPS: 75e6
 LOG_INTERVAL: 25
-NUM_CHECKPOINTS: 100
+NUM_CHECKPOINTS: 10
+NUM_UPDATES: 40
 
 RL:
   PPO:
     # ppo params
     clip_param: 0.2
     ppo_epoch: 4
-    num_mini_batch: 2
+    num_mini_batch: 1  #2
     value_loss_coef: 0.5
     entropy_coef: 0.01
     lr: 2.5e-4
