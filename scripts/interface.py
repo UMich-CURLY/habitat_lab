@@ -52,9 +52,9 @@ class sim_env(threading.Thread):
     _sensor_rate = 50  # hz
     _r = rospy.Rate(_sensor_rate)
 
-    def __init__(self, env_config_file):
+    def __init__(self, env):
         threading.Thread.__init__(self)
-        self.env = habitat.Env(config=habitat.get_config(env_config_file))
+        self.env = env
         # always assume height equals width
         
         self.env._sim.agents[0].move_filter_fn = self.env._sim.step_filter

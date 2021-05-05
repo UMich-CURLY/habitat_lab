@@ -20,7 +20,7 @@ from habitat_baselines.utils.common import (
     get_checkpoint_id,
     poll_checkpoint_folder,
 )
-
+import rospy
 
 class BaseTrainer:
     r"""Generic trainer class that serves as a base template for more
@@ -105,28 +105,31 @@ class BaseTrainer:
                     ckpt_idx = proposed_index
                 else:
                     ckpt_idx = 0
-                self._eval_checkpoint(
+                if not rospy.is_shutdown():
+                    print("hells yes")
+                policy = self._eval_checkpoint(
                     self.config.EVAL_CKPT_PATH_DIR,
                     writer,
                     checkpoint_index=ckpt_idx,
                 )
+                print(policy)
             else:
                 # evaluate multiple checkpoints in order
                 prev_ckpt_ind = -1
-                while True:
-                    current_ckpt = None
-                    while current_ckpt is None:
-                        current_ckpt = poll_checkpoint_folder(
-                            self.config.EVAL_CKPT_PATH_DIR, prev_ckpt_ind
-                        )
-                        time.sleep(2)  # sleep for 2 secs before polling again
-                    logger.info(f"=======current_ckpt: {current_ckpt}=======")
-                    prev_ckpt_ind += 1
-                    self._eval_checkpoint(
-                        checkpoint_path=current_ckpt,
-                        writer=writer,
-                        checkpoint_index=prev_ckpt_ind,
+                # while True:
+                current_ckpt = None
+                while current_ckpt is None:
+                    current_ckpt = poll_checkpoint_folder(
+                        self.config.EVAL_CKPT_PATH_DIR, prev_ckpt_ind
                     )
+                    time.sleep(2)  # sleep for 2 secs before polling again
+                logger.info(f"=======current_ckpt: {current_ckpt}=======")
+                prev_ckpt_ind += 1
+                self._eval_checkpoint(
+                    checkpoint_path=current_ckpt,
+                    writer=writer,
+                    checkpoint_index=prev_ckpt_ind,
+                )
 
     def _eval_checkpoint(
         self,

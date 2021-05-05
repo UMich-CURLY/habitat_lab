@@ -1,21 +1,25 @@
 VERBOSE: False
-BASE_TASK_CONFIG_PATH: "configs/tasks/pointnav_gibson.yaml"
+BASE_TASK_CONFIG_PATH: "configs/tasks/pointnav_rgbd.yaml"
 TRAINER_NAME: "ddppo"
 ENV_NAME: "NavRLEnv"
+EVAL:
+    SPLIT: test
+    USE_CKPT_CONFIG: False
 SIMULATOR_GPU_ID: 0
 TORCH_GPU_ID: 0
-VIDEO_OPTION: []
+# VIDEO_OPTION: []
+VIDEO_OPTION: ["disk", "tensorboard"]
 TENSORBOARD_DIR: "tb"
-VIDEO_DIR: "video_dir"
+VIDEO_DIR: "video_dir/ddppo"
 TEST_EPISODE_COUNT: -1
-EVAL_CKPT_PATH_DIR: "data/new_checkpoints"
-NUM_ENVIRONMENTS: 4
+EVAL_CKPT_PATH_DIR: "data/checkpoints/data/ddppo-models/gibson-2plus-resnet50.pth"
+NUM_ENVIRONMENTS: 1
 SENSORS: ["DEPTH_SENSOR"]
-CHECKPOINT_FOLDER: "data/new_checkpoints"
+CHECKPOINT_FOLDER: "data/checkpoints/data/ddppo-models"
 NUM_UPDATES: -1
 TOTAL_NUM_STEPS: 2.5e9
 LOG_INTERVAL: 10
-NUM_CHECKPOINTS: 100
+NUM_CHECKPOINTS: 1  #100
 
 RL:
   SUCCESS_REWARD: 2.5
@@ -27,7 +31,7 @@ RL:
     # ppo params
     clip_param: 0.2
     ppo_epoch: 2
-    num_mini_batch: 2
+    num_mini_batch: 1
     value_loss_coef: 0.5
     entropy_coef: 0.01
     lr: 2.5e-4
@@ -55,7 +59,7 @@ RL:
     # The PyTorch distributed backend to use
     distrib_backend: NCCL
     # Visual encoder backbone
-    pretrained_weights: data/ddppo-models/gibson-2plus-resnet50.pth
+    pretrained_weights: data/checkpoints/data/ddppo-models/gibson-2plus-resnet50.pth
     # Initialize with pretrained weights
     pretrained: False
     # Initialize just the visual encoder backbone with pretrained weights

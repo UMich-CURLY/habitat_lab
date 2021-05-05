@@ -99,7 +99,12 @@ def construct_envs(
         proc_config.freeze()
         configs.append(proc_config)
 
-    envs = habitat.VectorEnv(
+    # envs = habitat.VectorEnv(
+    #     make_env_fn=make_env_fn,
+    #     env_fn_args=tuple(zip(configs, env_classes)),
+    #     workers_ignore_signals=workers_ignore_signals,
+    # )
+    envs = habitat.ThreadedVectorEnv(
         make_env_fn=make_env_fn,
         env_fn_args=tuple(zip(configs, env_classes)),
         workers_ignore_signals=workers_ignore_signals,

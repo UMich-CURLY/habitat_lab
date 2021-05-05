@@ -50,6 +50,10 @@ from habitat_baselines.utils.common import batch_obs, generate_video
 from habitat_baselines.utils.env_utils import construct_envs
 
 
+import rospy
+from rospy_tutorials.msg import Floats
+from rospy.numpy_msg import numpy_msg
+
 @baseline_registry.register_trainer(name="ddppo")
 @baseline_registry.register_trainer(name="ppo")
 class PPOTrainer(BaseRLTrainer):
@@ -65,6 +69,7 @@ class PPOTrainer(BaseRLTrainer):
     actor_critic: Policy
 
     def __init__(self, config=None):
+        self._pub_policy = rospy.Publisher("~policy", numpy_msg(Floats), queue_size=1)
         interrupted_state = load_interrupted_state()
         if interrupted_state is not None:
             config = interrupted_state["config"]
@@ -78,6 +83,7 @@ class PPOTrainer(BaseRLTrainer):
         self._static_encoder = False
         self._encoder = None
         self._obs_space = None
+        self._final_policy_hack_tribhi = []
 
         # Distirbuted if the world size would be
         # greater than 1
@@ -867,7 +873,6 @@ class PPOTrainer(BaseRLTrainer):
 
         self.agent.load_state_dict(ckpt_dict["state_dict"])
         self.actor_critic = self.agent.actor_critic
-
         observations = self.envs.reset()
         batch = batch_obs(observations, device=self.device)
         batch = apply_obs_transforms_batch(batch, self.obs_transforms)
@@ -947,7 +952,7 @@ class PPOTrainer(BaseRLTrainer):
             # For backwards compatibility, we also call .item() to convert to
             # an int
             step_data = [a.item() for a in actions.to(device="cpu")]
-
+            self._final_policy_hack_tribhi.append(step_data)
             outputs = self.envs.step(step_data)
 
             observations, rewards_l, dones, infos = [
@@ -1058,5 +1063,8 @@ class PPOTrainer(BaseRLTrainer):
         metrics = {k: v for k, v in aggregated_stats.items() if k != "reward"}
         if len(metrics) > 0:
             writer.add_scalars("eval_metrics", metrics, step_id)
-
+        rate = rospy.Rate(10)
+        self._pub_policy.publish(np.float32(self._final_policy_hack_tribhi))
         self.envs.close()
+        return self._final_policy_hack_tribhi
+        

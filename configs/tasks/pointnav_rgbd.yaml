@@ -17,7 +17,7 @@ TASK:
   TYPE: Nav-v0
   SUCCESS_DISTANCE: 0.2
 
-  SENSORS: ['POINTGOAL_WITH_GPS_COMPASS_SENSOR', 'GPS_SENSOR']
+  SENSORS: ['POINTGOAL_WITH_GPS_COMPASS_SENSOR']
   POINTGOAL_WITH_GPS_COMPASS_SENSOR:
     GOAL_FORMAT: "POLAR"
     DIMENSIONALITY: 2
@@ -27,7 +27,7 @@ TASK:
   SUCCESS:
     SUCCESS_DISTANCE: 0.2
 DATASET:
-  TYPE: ObjectNav-v1
-  SPLIT: train
-  DATA_PATH: "data/datasets/objectnav/mp3d/v1/{split}/content/17DRP5sb8fy.json.gz"
+  TYPE: PointNav-v1
+  SPLIT: test
+  DATA_PATH: "data/datasets/pointnav/mp3d/v1/{split}/content/17DRP5sb8fy0.json.gz"
   SCENES_DIR: "data/scene_datasets/"
