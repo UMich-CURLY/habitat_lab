@@ -53,8 +53,6 @@ from habitat_baselines.utils.env_utils import construct_envs
 import rospy
 from rospy_tutorials.msg import Floats
 from rospy.numpy_msg import numpy_msg
-from geometry_msgs.msg import PointStamped, PoseStamped
-
 
 @baseline_registry.register_trainer(name="ddppo")
 @baseline_registry.register_trainer(name="ppo")
@@ -86,16 +84,12 @@ class PPOTrainer(BaseRLTrainer):
         self._encoder = None
         self._obs_space = None
         self._final_policy_hack_tribhi = []
-        _sensor_rate = 50  # hz
-        self._r = rospy.Rate(_sensor_rate)
         self._pub_rgb = rospy.Publisher("~rgb", numpy_msg(Floats), queue_size=1)
         self._pub_depth = rospy.Publisher("~depth", numpy_msg(Floats), queue_size=1)
         self._pub_pose = rospy.Publisher("~pose", PoseStamped, queue_size=1)
-
         # Distirbuted if the world size would be
         # greater than 1
         self._is_distributed = get_distrib_size()[2] > 1
-        print("Inside the new trainer")
 
     @property
     def obs_space(self):
@@ -834,46 +828,6 @@ class PPOTrainer(BaseRLTrainer):
 
             self.envs.close()
 
-    def run(self,observation):
-        """Publish sensor readings through ROS on a different thread.
-            This method defines what the thread does when the start() method
-            of the threading class is called
-        """
-        # print("Run function called")
-        if not rospy.is_shutdown():
-            # print("not a rospy issue")
-            # lock.acquire()
-            if "rgb" in observation[0]:
-                print("Has RGB Data")
-                rgb_with_res = np.concatenate(
-                    (
-                        np.float32(observation[0]["rgb"].ravel()),
-                        np.array(
-                            [256,256]
-                        ),
-                    )
-                )
-                self._pub_rgb.publish(np.float32(rgb_with_res))
-
-            # multiply by 10 to get distance in meters
-            if 'depth' in observation[0]:
-                depth_with_res = np.concatenate(
-                    (
-                        np.float32(observation[0]['depth'].ravel() * 10),
-                        np.array(
-                            [
-                                256,256,
-                            ]
-                        ),
-                    )
-                )
-                self._pub_depth.publish(np.float32(depth_with_res))
-            # lock.release()
-            
-            
-            
-            self._r.sleep()
-
     def _eval_checkpoint(
         self,
         checkpoint_path: str,
@@ -922,7 +876,6 @@ class PPOTrainer(BaseRLTrainer):
         self.agent.load_state_dict(ckpt_dict["state_dict"])
         self.actor_critic = self.agent.actor_critic
         observations = self.envs.reset()
-        self.run(observations)
         batch = batch_obs(observations, device=self.device)
         batch = apply_obs_transforms_batch(batch, self.obs_transforms)
 
@@ -1007,11 +960,6 @@ class PPOTrainer(BaseRLTrainer):
             observations, rewards_l, dones, infos = [
                 list(x) for x in zip(*outputs)
             ]
-            self.run(observations)
-            pos = infos[0]["top_down_map"]["agent_map_coord"]
-            map_size = infos[0]["top_down_map"]["map"].shape
-            print(map_size)
-            print(pos[0]/(map_size[0]*0.05), (pos[1]*(map_size[1]*0.05)))
             batch = batch_obs(observations, device=self.device)
             batch = apply_obs_transforms_batch(batch, self.obs_transforms)
 
@@ -1119,3 +1067,4 @@ class PPOTrainer(BaseRLTrainer):
             writer.add_scalars("eval_metrics", metrics, step_id)
         self._pub_policy.publish(np.float32(self._final_policy_hack_tribhi))
         self.envs.close()
+        

@@ -53,10 +53,10 @@ from habitat_baselines.utils.env_utils import construct_envs
 import rospy
 from rospy_tutorials.msg import Floats
 from rospy.numpy_msg import numpy_msg
-from geometry_msgs.msg import PointStamped, PoseStamped
+import threading
 
 
-@baseline_registry.register_trainer(name="ddppo")
+@baseline_registry.register_trainer(name="my_ddppo")
 @baseline_registry.register_trainer(name="ppo")
 class PPOTrainer(BaseRLTrainer):
     r"""Trainer class for PPO algorithm
@@ -88,9 +88,6 @@ class PPOTrainer(BaseRLTrainer):
         self._final_policy_hack_tribhi = []
         _sensor_rate = 50  # hz
         self._r = rospy.Rate(_sensor_rate)
-        self._pub_rgb = rospy.Publisher("~rgb", numpy_msg(Floats), queue_size=1)
-        self._pub_depth = rospy.Publisher("~depth", numpy_msg(Floats), queue_size=1)
-        self._pub_pose = rospy.Publisher("~pose", PoseStamped, queue_size=1)
 
         # Distirbuted if the world size would be
         # greater than 1
@@ -820,7 +817,7 @@ class PPOTrainer(BaseRLTrainer):
                 self._training_log(writer, losses, prev_time)
 
                 # checkpoint model
-                if rank0_only() and self.should_checkpoint():
+                if rank0_only() and self.should_checkpoint():                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           
                     self.save_checkpoint(
                         f"ckpt.{count_checkpoints}.pth",
                         dict(
@@ -834,32 +831,31 @@ class PPOTrainer(BaseRLTrainer):
 
             self.envs.close()
 
-    def run(self,observation):
+    def run(observation):
         """Publish sensor readings through ROS on a different thread.
             This method defines what the thread does when the start() method
             of the threading class is called
         """
-        # print("Run function called")
-        if not rospy.is_shutdown():
-            # print("not a rospy issue")
+        print("Run function called")
+        while not rospy.is_shutdown():
             # lock.acquire()
-            if "rgb" in observation[0]:
+            if "rgb" in observation:
                 print("Has RGB Data")
                 rgb_with_res = np.concatenate(
                     (
-                        np.float32(observation[0]["rgb"].ravel()),
+                        np.float32(observations["rgb"].ravel()),
                         np.array(
                             [256,256]
                         ),
                     )
                 )
-                self._pub_rgb.publish(np.float32(rgb_with_res))
 
             # multiply by 10 to get distance in meters
-            if 'depth' in observation[0]:
+            if "depth" in observation:
+                print("Has depth Data")
                 depth_with_res = np.concatenate(
                     (
-                        np.float32(observation[0]['depth'].ravel() * 10),
+                        np.float32(observations["depth"].ravel() * 10),
                         np.array(
                             [
                                 256,256,
@@ -867,10 +863,9 @@ class PPOTrainer(BaseRLTrainer):
                         ),
                     )
                 )
-                self._pub_depth.publish(np.float32(depth_with_res))
             # lock.release()
-            
-            
+            self._pub_rgb.publish(np.float32(rgb_with_res))
+            self._pub_depth.publish(np.float32(depth_with_res))
             
             self._r.sleep()
 
@@ -1008,10 +1003,6 @@ class PPOTrainer(BaseRLTrainer):
                 list(x) for x in zip(*outputs)
             ]
             self.run(observations)
-            pos = infos[0]["top_down_map"]["agent_map_coord"]
-            map_size = infos[0]["top_down_map"]["map"].shape
-            print(map_size)
-            print(pos[0]/(map_size[0]*0.05), (pos[1]*(map_size[1]*0.05)))
             batch = batch_obs(observations, device=self.device)
             batch = apply_obs_transforms_batch(batch, self.obs_transforms)
 
@@ -1119,3 +1110,4 @@ class PPOTrainer(BaseRLTrainer):
             writer.add_scalars("eval_metrics", metrics, step_id)
         self._pub_policy.publish(np.float32(self._final_policy_hack_tribhi))
         self.envs.close()
+        
