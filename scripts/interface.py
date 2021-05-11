@@ -32,6 +32,7 @@ rospy.init_node("habitat", anonymous=False)
 def convert_points_to_topdown(pathfinder, points, meters_per_pixel = 0.5):
     points_topdown = []
     bounds = pathfinder.get_bounds()
+    print(bounds)
     for point in points:
         # convert 3D x,z to topdown x,y
         px = (point[0] - bounds[0][0]) / meters_per_pixel
@@ -52,9 +53,9 @@ class sim_env(threading.Thread):
     _sensor_rate = 50  # hz
     _r = rospy.Rate(_sensor_rate)
 
-    def __init__(self, env):
+    def __init__(self, env_config_file):
         threading.Thread.__init__(self)
-        self.env = env
+        self.env = habitat.Env(config=habitat.get_config(env_config_file))
         # always assume height equals width
         
         self.env._sim.agents[0].move_filter_fn = self.env._sim.step_filter

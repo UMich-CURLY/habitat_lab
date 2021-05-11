@@ -54,7 +54,37 @@ import rospy
 from rospy_tutorials.msg import Floats
 from rospy.numpy_msg import numpy_msg
 from geometry_msgs.msg import PointStamped, PoseStamped
+from habitat.utils.visualizations import maps
+import tf
+from habitat.core.registry import registry
+from habitat.core.embodied_task import (
+    EmbodiedTask,
+    Measure,
+    SimulatorTaskAction,
+)
+from habitat.config.default import _C, CN
+from nav_msgs.msg import Path
 
+
+
+@registry.register_measure
+class Position(Measure):
+
+    cls_uuid: str = "position"
+    def __init__(self, sim, config, *args: Any, **kwargs: Any):
+        self._sim = sim
+        self._config = config
+        self._metric = None
+        super().__init__()
+
+    def _get_uuid(self, *args: Any, **kwargs: Any) -> str:
+        return "position"
+
+    def reset_metric(self, episode, *args: Any, **kwargs: Any):
+        self._metric = None
+
+    def update_metric(self, episode, action, *args: Any, **kwargs: Any):
+        self._metric = self._sim.get_agent_position()
 
 @baseline_registry.register_trainer(name="ddppo")
 @baseline_registry.register_trainer(name="ppo")
@@ -91,6 +121,7 @@ class PPOTrainer(BaseRLTrainer):
         self._pub_rgb = rospy.Publisher("~rgb", numpy_msg(Floats), queue_size=1)
         self._pub_depth = rospy.Publisher("~depth", numpy_msg(Floats), queue_size=1)
         self._pub_pose = rospy.Publisher("~pose", PoseStamped, queue_size=1)
+        self._pub_heading = rospy.Publisher("~heading", numpy_msg(Floats), queue_size=1)
 
         # Distirbuted if the world size would be
         # greater than 1
@@ -854,7 +885,7 @@ class PPOTrainer(BaseRLTrainer):
                     )
                 )
                 self._pub_rgb.publish(np.float32(rgb_with_res))
-
+            
             # multiply by 10 to get distance in meters
             if 'depth' in observation[0]:
                 depth_with_res = np.concatenate(
@@ -907,11 +938,14 @@ class PPOTrainer(BaseRLTrainer):
         config.TASK_CONFIG.DATASET.SPLIT = config.EVAL.SPLIT
         config.freeze()
 
-        if len(self.config.VIDEO_OPTION) > 0:
-            config.defrost()
-            config.TASK_CONFIG.TASK.MEASUREMENTS.append("TOP_DOWN_MAP")
-            config.TASK_CONFIG.TASK.MEASUREMENTS.append("COLLISIONS")
-            config.freeze()
+        # if len(self.config.VIDEO_OPTION) > 0:
+        config.defrost()
+        config.TASK_CONFIG.TASK.MEASUREMENTS.append("TOP_DOWN_MAP")
+        config.TASK_CONFIG.TASK.MEASUREMENTS.append("COLLISIONS")
+        # _C.TASK.POSITION = CN()
+        # _C.POSITION.TYPE = "position"
+        # config.TASK_CONFIG.TASK.MEASUREMENTS.append("position")
+        config.freeze()
 
         if config.VERBOSE:
             logger.info(f"env config: {config}")
@@ -1010,8 +1044,42 @@ class PPOTrainer(BaseRLTrainer):
             self.run(observations)
             pos = infos[0]["top_down_map"]["agent_map_coord"]
             map_size = infos[0]["top_down_map"]["map"].shape
-            print(map_size)
-            print(pos[0]/(map_size[0]*0.05), (pos[1]*(map_size[1]*0.05)))
+            lower_bound = np.array([-11.59344,-0.127553,-5.392021])
+            upper_bound = np.array([4.757026,4.278783,2.88662])
+            size_x = upper_bound[0]-lower_bound[0]
+            size_y = upper_bound[2]-lower_bound[2]
+            phi = infos[0]["top_down_map"]["agent_angle"]
+            self._pub_heading.publish(np.float32([phi]))
+            if phi>0 and phi<np.pi/2:
+                phi = np.pi/2-phi
+            elif phi>np.pi/2 and phi<np.pi:
+                phi = np.pi/2-phi
+            elif phi>np.pi and phi<3*np.pi/4:
+                phi = np.pi/2-phi
+            else:
+                phi = np.pi/2-phi
+
+
+            proj_quat = tf.transformations.quaternion_from_euler(0.0,phi,0.0)
+            # proj_quat = tf.transformations.quaternion_from_euler(0.0,phi+np.pi/4,0.0)
+            # realworld_x = lower_bound[2] + grid_x * grid_size[0]
+            # realworld_y = lower_bound[0] + grid_y * grid_size[1]
+            topdown_map = maps.colorize_draw_agent_and_fit_to_height(infos[0]["top_down_map"],map_size[0])
+            scale_x = size_x/(map_size[1]*0.5)
+            scale_y = size_y/(map_size[0]*0.5)
+
+            self.poseMsg = PoseStamped()
+            self.poseMsg.header.frame_id = "world"
+            self.poseMsg.pose.orientation.x = proj_quat[0]
+            self.poseMsg.pose.orientation.y = proj_quat[2]
+            self.poseMsg.pose.orientation.z = proj_quat[1]
+            self.poseMsg.pose.orientation.w = proj_quat[3]
+            self.poseMsg.header.stamp = rospy.Time.now()
+            self.poseMsg.pose.position.x = pos[1]*scale_x
+            self.poseMsg.pose.position.y = pos[0]*scale_y
+            self.poseMsg.pose.position.z = 0.0
+            
+            self._pub_pose.publish(self.poseMsg)
             batch = batch_obs(observations, device=self.device)
             batch = apply_obs_transforms_batch(batch, self.obs_transforms)
 

@@ -212,7 +212,7 @@ class episodal_nav(threading.Thread):
         agent_pos = state.position
         agent_quat = quat_to_coeff(state.rotation)
         euler = list(tf.transformations.euler_from_quaternion(agent_quat))
-        proj_quat = tf.transformations.quaternion_from_euler(0.0,0.0,top_down_map_angle-np.pi)
+        proj_quat = tf.transformations.quaternion_from_euler(0.0,top_down_map_angle-np.pi,0.0)
         # proj_quat = tf.transformations.quaternion_from_euler(euler[0]+np.pi,euler[2],euler[1])
         agent_pos_in_map_frame = convert_points_to_topdown(self.env.sim.pathfinder, [agent_pos])
         self.poseMsg = PoseStamped()

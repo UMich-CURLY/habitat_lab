@@ -197,7 +197,9 @@ class tour_planner:
 		# self.publish_markers()
 
 	def publish_3d_plan(self):
-		self._pub_plan_3d.publish(np.float32(self.final_plan_3d))
+		print(self.final_plan_3d)
+		# while not rospy.is_shutdown():
+		self._pub_plan_3d.publish(np.float32(self.final_plan_3d).ravel())
 
 	def publish_markers(self):
 		msg = MarkerArray()
@@ -331,7 +333,7 @@ class tour_planner:
 		# self._r.sleep()
 
 	def callback(self, point, tour_plan):
-		# self.run_demo()
+		self.run_demo()
 		tour_plan.publish_markers_initial()
 		tour_plan.publish_plan_initial()
 		rospy.sleep(10.)
@@ -379,7 +381,8 @@ def main():
 	# tour_plan.publish_markers_initial()
 	# tour_plan.publish_plan_initial()
 	rospy.Subscriber("/clicked_point", PointStamped,tour_plan.callback, tour_plan,queue_size=1)
-	rospy.spin()
+	while not rospy.is_shutdown():
+		rospy.spin()
 	# # define a list capturing how long it took
 	# # to update agent orientation for past 3 instances
 	# # TODO modify dt_list to depend on r1
