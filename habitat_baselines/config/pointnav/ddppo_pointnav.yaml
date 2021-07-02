@@ -8,18 +8,18 @@ EVAL:
 SIMULATOR_GPU_ID: 0
 TORCH_GPU_ID: 0
 # VIDEO_OPTION: []
-VIDEO_OPTION: ["disk", "tensorboard"]
+VIDEO_OPTION: ["tensorboard"]
 TENSORBOARD_DIR: "tb"
 VIDEO_DIR: "video_dir/ddppo"
 TEST_EPISODE_COUNT: -1
-EVAL_CKPT_PATH_DIR: "data/checkpoints/data/ddppo-models/gibson-2plus-resnet50.pth"
-NUM_ENVIRONMENTS: 1
-SENSORS: ["DEPTH_SENSOR"]
-CHECKPOINT_FOLDER: "data/checkpoints/data/ddppo-models"
+EVAL_CKPT_PATH_DIR: "data/checkpoints/data/ddppo-models/rgb_agent/ckpt.3.pth"
+NUM_ENVIRONMENTS: 1 #4
+SENSORS: ['RGB_SENSOR', 'DEPTH_SENSOR']
+CHECKPOINT_FOLDER: "data/checkpoints/data/ddppo-models/rgb_agent"
 NUM_UPDATES: -1
 TOTAL_NUM_STEPS: 2.5e9
 LOG_INTERVAL: 10
-NUM_CHECKPOINTS: 1  #100
+NUM_CHECKPOINTS: 100  #100
 
 RL:
   SUCCESS_REWARD: 2.5

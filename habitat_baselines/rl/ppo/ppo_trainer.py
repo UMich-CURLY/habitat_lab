@@ -101,7 +101,7 @@ class PPOTrainer(BaseRLTrainer):
     actor_critic: Policy
 
     def __init__(self, config=None):
-        self._pub_policy = rospy.Publisher("~policy", numpy_msg(Floats), queue_size=1)
+        
         interrupted_state = load_interrupted_state()
         if interrupted_state is not None:
             config = interrupted_state["config"]
@@ -116,13 +116,17 @@ class PPOTrainer(BaseRLTrainer):
         self._encoder = None
         self._obs_space = None
         self._final_policy_hack_tribhi = []
-        _sensor_rate = 50  # hz
-        self._r = rospy.Rate(_sensor_rate)
-        self._pub_rgb = rospy.Publisher("~rgb", numpy_msg(Floats), queue_size=1)
-        self._pub_depth = rospy.Publisher("~depth", numpy_msg(Floats), queue_size=1)
-        self._pub_pose = rospy.Publisher("~pose", PoseStamped, queue_size=1)
-        self._pub_heading = rospy.Publisher("~heading", numpy_msg(Floats), queue_size=1)
+        if rospy.core.is_initialized():
+            _sensor_rate = 50  # hz
+            self._r = rospy.Rate(_sensor_rate)
+            self._pub_rgb = rospy.Publisher("~rgb", numpy_msg(Floats), queue_size=1)
+            self._pub_depth = rospy.Publisher("~depth", numpy_msg(Floats), queue_size=1)
+            self._pub_pose = rospy.Publisher("~pose", PoseStamped, queue_size=1)
+            self._pub_heading = rospy.Publisher("~heading", numpy_msg(Floats), queue_size=1)
+            self._pub_policy = rospy.Publisher("~policy", numpy_msg(Floats), queue_size=1)
 
+
+        
         # Distirbuted if the world size would be
         # greater than 1
         self._is_distributed = get_distrib_size()[2] > 1

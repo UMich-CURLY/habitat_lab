@@ -18,7 +18,6 @@ from ortools.constraint_solver import pywrapcp
 
 # function to display the topdown map
 from PIL import Image
-rospy.init_node("get_points",anonymous=False)
 
 def convert_points_to_topdown(pathfinder, points, meters_per_pixel = 0.5):
 	points_topdown = []
@@ -41,13 +40,16 @@ def get_rgb_from_demand(demand):
 	return rgb
 
 
-class tour_planner:
+class tour_planner():
 	selection_done = False
-	_sensor_rate = 50  # hz
-	_r = rospy.Rate(_sensor_rate)
-	def __init__(self):
-		env_config_file="configs/tasks/pointnav_rgbd.yaml"
-		self.env = habitat.Env(config=habitat.get_config(env_config_file))
+	
+	
+	def __init__(self, env):
+		if (not rospy.core.is_initialized()):
+			rospy.init_node("get_points",anonymous=False)
+		_sensor_rate = 50  # hz
+		self._r = rospy.Rate(_sensor_rate)
+		self.env = env
 		self._pub_plan = rospy.Publisher("~global_plan", Path, queue_size=1)
 		self._pub_markers = rospy.Publisher("~points", MarkerArray, queue_size = 1)
 		self._pub_plan_initial = rospy.Publisher("~initial_global_plan", Path, queue_size=1)
@@ -76,9 +78,10 @@ class tour_planner:
 					self.navigable.append(self.env._sim.pathfinder.is_navigable(map_points_3d))
 		self.selected_points = np.array(self.selected_points)
 		self.selected_points = convert_points_to_topdown(self.env._sim.pathfinder, self.selected_points)
-		# self.demand_list = [0, 1, 1, 3, 6, 3, 6, 8, 8, 1, 2, 1, 2, 6, 6, 8, 8, 9, 1, 3, 5, 2, 8, 4]
+		# self.demand_list = [0, 1, 1, 3, 6, 3, 6, 8, 8, 1, 2 , 1, 2, 6, 6, 8, 8, 9, 1, 3, 5, 2, 8, 4]
 		self.demand_list = [0,6,3,1,6,2,4,1,3,7,9,5,9,5,2,6,6,9,7,5,5,3,2,8]
 		self.capacity = 80
+		rospy.Subscriber("/clicked_point", PointStamped,self.callback,queue_size=1)
 		self._r.sleep()
 
 	def generate_distance_matrix(self):
@@ -332,16 +335,16 @@ class tour_planner:
 		self._pub_plan.publish(msg)
 		# self._r.sleep()
 
-	def callback(self, point, tour_plan):
+	def callback(self,points):
 		self.run_demo()
-		tour_plan.publish_markers_initial()
-		tour_plan.publish_plan_initial()
-		rospy.sleep(10.)
+		self.publish_markers_initial()
+		self.publish_plan_initial()
+		# rospy.sleep(10.)
 		xy_points = {}
 		navigable = []
 		xy_points["points"] = self.selected_points
 		xy_points["navigable"] = self.navigable
-		tour_plan.generate_plan()
+		self.generate_plan()
 
 
 		# if (tour_plan.selection_done == True):
@@ -377,7 +380,10 @@ class tour_planner:
 		print(dist)
 
 def main():
-	tour_plan = tour_planner()
+	
+	env_config_file="configs/tasks/pointnav_rgbd.yaml"
+	env = habitat.Env(config=habitat.get_config(env_config_file))
+	tour_plan = tour_planner(env)
 	# tour_plan.publish_markers_initial()
 	# tour_plan.publish_plan_initial()
 	rospy.Subscriber("/clicked_point", PointStamped,tour_plan.callback, tour_plan,queue_size=1)
