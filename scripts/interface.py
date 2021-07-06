@@ -203,6 +203,7 @@ class sim_env(threading.Thread):
             
             self._pub_rgb.publish(np.float32(rgb_with_res))
             self._pub_depth.publish(np.float32(depth_with_res))
+            self._update_position()
             lock.release()
             self._r.sleep()
             
@@ -226,13 +227,16 @@ class sim_env(threading.Thread):
     #     self._dt = dt
 
     def navigate(self):
-        print("Navigate called")
-        if (self._current_episode<self._total_number_of_episodes and self._global_plan_published==True ):
-            if (self.env._elapsed_steps == 0):
+        if (self._current_episode<self._total_number_of_episodes-1 and self._global_plan_published==True ):
+            first_step = False
+            print("Navigate exectied, step number, episode number " + str(self.env._elapsed_steps) + " " + str(self.env._episode_iterator))
+            if (self.env._elapsed_steps == 0 or self.env.episode_over):
                 agent_state = self.env.sim.get_agent_state(0)
                 # sample1 = agent_state.position
                 # sample2 = self.current_goal
                 # agent_state.position = sample1
+                self.env.reset()
+                self.env.sim.set_agent_state(agent_state.position, agent_state.rotation)
                 goal_radius = self.env.episodes[0].goals[0].radius
                 if goal_radius is None:
                     goal_radius = config.SIMULATOR.FORWARD_STEP_SIZE
@@ -243,23 +247,21 @@ class sim_env(threading.Thread):
                 # self.env._sim.agents[0].set_state(agent_state)
                 print("Navigation episode " + str(self._current_episode))
                 self.current_goal = self._nodes[self._current_episode+1]
+                first_step = True
+
                 
-            while not self.env.episode_over:
+            while not self.env.episode_over or first_step:
                 lock.acquire()
                 best_action = follower.get_next_action(
                     self.current_goal
                 )
                 if best_action is None:
                     break
-                print(best_action)
-                # observations, reward, done = self.env.step(best_action)
                 self.observations.update(self.env.step(best_action))
-                # print(self.env.task.step(best_action))
+                first_step = False
                 lock.release()
-                # self.run()
-                # self._update_position()
-                rospy.sleep(1.)
-            print("end of episode" + str(self._current_episode))
+                rospy.sleep(0.2)
+            print("end of episode " + str(self._current_episode))
             self._current_episode+=1
 
             
@@ -276,7 +278,6 @@ class sim_env(threading.Thread):
         self.current_orientation = [0,0,0,1]
         self.env._sim.set_agent_state(np.float32(self.current_position), np.float32(self.current_orientation))
         self.current_goal = self._nodes[self._current_episode+1]
-        self._current_episode+=1
         print("Exiting plan_callback")
         lock.release()
 
@@ -301,12 +302,12 @@ def main():
     # to update agent orientation for past 3 instances
     # TODO modify dt_list to depend on r1
     # dt_list = [0.009, 0.009, 0.009]
-    print("Outside while loop" + str(my_env._global_plan_published))
+    # print("Outside while loop" + str(my_env._global_plan_published))
     while not rospy.is_shutdown():
-        print("Inside while loop" + str(my_env._global_plan_published))
-        if(my_env._global_plan_published == True):
-            my_env.update_orientation()
-            my_env.navigate()
+        # print("Inside while loop" + str(my_env._global_plan_published))
+        # if(my_env._global_plan_published == True):
+        # my_env.update_orientation()
+        my_env.navigate()
         # rospy.spin()
         my_env._r.sleep()
 
