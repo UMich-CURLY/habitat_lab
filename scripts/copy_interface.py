@@ -28,7 +28,7 @@ import time
 from tour_planner_dropped import tour_planner
 
 lock = threading.Lock()
-rospy.init_node("robot_1", anonymous=False)
+rospy.init_node("robot_2", anonymous=False)
 
 def convert_points_to_topdown(pathfinder, points, meters_per_pixel = 0.5):
     points_topdown = []
